@@ -22,3 +22,55 @@ var beatles=[{
   profilePic:"http://cp91279.biography.com/BIO_Bio-Shorts_0_Ringo-Starr_SF_HD_768x432-16x9.jpg"
 }
 ]
+
+http.createServer((req,res)=>{
+  if(req.url==="/api"){
+    res.writeHead(200,{"Content-Type": "application/json"})
+    res.end(JSON.stringify(beatles))
+  }
+  else if(req.url.startsWith("/api/")){
+    
+      const nombre=req.url.split("/api/")[1].replace("%20"," ");
+      for (var i = 0; i < beatles.length; i++) {
+        if(nombre.toLocaleLowerCase() === beatles[i].name.toLocaleLowerCase()){
+          
+          res.writeHead(200,{"Content-Type": "application/json"});
+          res.end(JSON.stringify(beatles[i]));
+          console.log(beatles[i].name);
+          se_encontro=true;
+          break;
+          
+        }
+      }
+      if(i===beatles.length){
+        res.writeHead(404,{"Content-Type": "text/plain"});
+        res.end("404 not found");
+      }
+  }else if(req.url==="/"){
+    res.writeHead(200, {"Content-Type": "text/html"})
+    const dochtml=fs.readFileSync(__dirname+"/index.html")
+    res.end(dochtml)
+
+  }else if(req.url.startsWith("/")){
+    const Beatlename=req.url.split("/")[1].replace("%20"," ");
+    const foundbeatle = beatles.find((beatle)=>beatle.name.toLocaleLowerCase() === Beatlename.toLocaleLowerCase())
+    if(!foundbeatle){
+      res.writeHead(404,{"Content-Type": "text/plain"})
+      res.end("404 not found")
+    }else{
+      
+      var html=fs.readFileSync(__dirname+"/index.html","utf-8")
+      html=html.replace("[nombreBeatle]",foundbeatle.name)
+        .replace("[fechaNacimiento]",foundbeatle.birthdate)
+        .replace("[url]",foundbeatle.profilePic) 
+      
+      res.writeHead(200, {"Content-Type": "text/html"})
+      res.end(html)
+    }
+  }else{
+    res.writeHead(404,{"Content-Type": "text/plain"})
+    res.end("404 not found")
+  }
+}).listen(3001,()=>{
+  console.log("todo ookey perro")
+})
