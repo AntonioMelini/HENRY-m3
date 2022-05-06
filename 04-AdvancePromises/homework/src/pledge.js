@@ -10,35 +10,85 @@ function $Promise(executor){
     this._state="pending";
     this._value=undefined;
     this._handlerGroups=[];
+    
   
     executor(this._internalResolve.bind(this),this._internalReject.bind(this))
    
 }
 $Promise.prototype.catch=function(errorCb){
-    this.then(null,errorCb);
+   return this.then(null,errorCb);
 }
 $Promise.prototype.then=function(successCb,errorCb){
     if(typeof successCb!="function" )successCb=false;
     if( typeof errorCb!="function")errorCb=false;
+    let downstreamPromise= new $Promise(function(){})
     let obj={
         successCb:successCb,
-        errorCb:errorCb
+        errorCb:errorCb,
+        downstreamPromise
     }
     this._handlerGroups.push(obj);
 
     if(this._state !="pending"){
         this._callHandlers();
     }
+    
+        return downstreamPromise;
+    
+    
 }
 $Promise.prototype._callHandlers=function(){
    while(this._handlerGroups.length > 0){
+
         let obj_actual=this._handlerGroups.shift()
+        let downstreamPromise=obj_actual.downstreamPromise;
+
         if(this._state === "fulfilled"){
-           obj_actual.successCb && obj_actual.successCb(this._value)
+            if(!obj_actual.successCb){  
+                downstreamPromise._internalResolve(this._value)
+            }else{
+                try {
+                    let resultado=obj_actual.successCb(this._value)
+                if(resultado instanceof $Promise){
+                    resultado.then((value)=>{
+                        downstreamPromise._internalResolve(value)
+                    },(razon)=>{
+                        downstreamPromise._internalReject(razon)
+                    })
+                }else{
+                    downstreamPromise._internalResolve(resultado)
+                }
+                } catch (error) {
+                    downstreamPromise._internalReject(error)
+                    
+                }
+                
+            }
         }
         if(this._state==="rejected"){
-            if(obj_actual.errorCb)  obj_actual.errorCb(this._value)
-        }     
+            if(!obj_actual.errorCb){  
+                downstreamPromise._internalReject(this._value)
+            }else{
+                try {
+                    let resultadoerror=obj_actual.errorCb(this._value)
+                if(resultadoerror instanceof $Promise){
+                    resultadoerror.then((value)=>{
+                        downstreamPromise._internalResolve(value)
+                    },(razon)=>{
+                        downstreamPromise._internalReject(razon)
+                    })
+                }else {
+                    downstreamPromise._internalResolve(resultadoerror)
+                }
+                } catch (error) {
+                    downstreamPromise._internalReject(error)
+                    
+                }
+                
+            }
+        }
+        
+
     }
 }
 $Promise.prototype._internalResolve=function(data){
